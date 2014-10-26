@@ -94,6 +94,19 @@ public class DocumentController : ApiController
 	   return _doc;
    }
 
+   [Route("sendForComments")]
+   public Document GetResult()
+   {
+   	   _doc.sendForComments();
+       return _doc;
+   }
+
+   [Route("returnFromCommenting")]
+   public Document GetResult()
+   {
+   	   _doc.returnFromCommenting();
+       return _doc;
+   }
 
    [Route("sendForApproval")]
    public Document GetResult()
