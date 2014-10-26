@@ -88,39 +88,50 @@ public class DocumentController : ApiController
 	}
 
    [Route("approve/{password}")]
-   public Document Approve(string password)
+   public Document GetApprove(string password)
    {
        _doc.approve(password);
 	   return _doc;
    }
 
    [Route("sendForComments")]
-   public Document sendForComments()
+   public Document GetSendForComments()
    {
    	   _doc.sendForComments();
        return _doc;
    }
 
    [Route("returnFromCommenting")]
-   public Document returnFromCommenting()
+   public Document GetReturnFromCommenting()
    {
    	   _doc.returnFromCommenting();
        return _doc;
    }
 
    [Route("sendForApproval")]
-   public Document sendForApproval()
+   public Document GetSendForApproval()
    {
    	   _doc.sendForApproval();
        return _doc;
    }
 
-   [Route("document")]
-   public Document GetDoc()
+   [Route("state")]
+   public string GetState()
    {
-       return _doc;
-   }
+   	   if (_doc.isApproved) {
+	   		if (_doc.isDraft) {
+	   			return "Sent to collegue for comments";
+			} else {
+	   			return "Approved";
+	   		}
+		}
+	   if (_doc.isDraft) {
+	   		return "Draft";
+	   }
+	   return "For Approval";
+    }
 }
+	
 
 public class Startup 
 { 
