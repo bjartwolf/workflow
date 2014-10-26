@@ -37,6 +37,10 @@ async void Main()
 }
 
 public class Document {
+	public Document() {
+		isDraft = true;
+	}
+
 	public readonly int Id;
 	public bool isDraft {get;set;}
 	public bool isApproved {get;set;}
