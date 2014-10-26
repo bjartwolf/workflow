@@ -53,8 +53,11 @@ public class Document {
 
     /// <summary>
     /// The send for approval method.
-    /// Send document for approval by removing
-	/// the draft status.
+    /// Send document for approval by setting
+	/// documented to for approval state.
+	/// Best-practice documenation should make it look like code is 
+	/// documented, obscure the important details with
+	/// crap comments and hide the rest of the code from the developer.
     /// </summary>
     /// <returns>void</returns>
 	/// <remarks>None</remarks>
@@ -91,6 +94,13 @@ public class DocumentController : ApiController
 	   return _doc;
    }
 
+
+   [Route("sendForApproval")]
+   public Document GetResult()
+   {
+   	   _doc.sendForApproval();
+       return _doc;
+   }
 
    [Route("document")]
    public Document GetResult()
