@@ -88,35 +88,35 @@ public class DocumentController : ApiController
 	}
 
    [Route("approve/{password}")]
-   public Document GetResult(string password)
+   public Document Approve(string password)
    {
        _doc.approve(password);
 	   return _doc;
    }
 
    [Route("sendForComments")]
-   public Document GetResult()
+   public Document sendForComments()
    {
    	   _doc.sendForComments();
        return _doc;
    }
 
    [Route("returnFromCommenting")]
-   public Document GetResult()
+   public Document returnFromCommenting()
    {
    	   _doc.returnFromCommenting();
        return _doc;
    }
 
    [Route("sendForApproval")]
-   public Document GetResult()
+   public Document sendForApproval()
    {
    	   _doc.sendForApproval();
        return _doc;
    }
 
    [Route("document")]
-   public Document GetResult()
+   public Document GetDoc()
    {
        return _doc;
    }
