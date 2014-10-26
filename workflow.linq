@@ -50,6 +50,16 @@ public class Document {
 		isApproved = true;
 	}
 
+    /// <summary>
+    /// The send for approval method.
+    /// Send document for approval by removing
+	/// the draft status.
+    /// </summary>
+    /// <returns>void</returns>
+	/// <remarks>None</remarks>
+	/// <writtenBy>Bjartwolf</writtenBy>
+	/// <writtenAt>01-02-2012</writtenAt>
+
 	public void sendForApproval() {
 		isDraft = false;
 	}
@@ -64,8 +74,6 @@ public class Document {
 		isDraft = true;
 		isApproved = true;
 	}
-
-
 }
 
 public class DocumentController : ApiController
@@ -88,8 +96,6 @@ public class DocumentController : ApiController
    {
        return _doc;
    }
-   
-
 }
 
 public class Startup 
