@@ -130,6 +130,17 @@ public class DocumentController : ApiController
 	   }
 	   return "For Approval";
     }
+	
+   [Route("")]
+   public HttpResponseMessage GetResult()
+   {
+       var response = new HttpResponseMessage(HttpStatusCode.OK)
+       {
+           Content = new StringContent(File.ReadAllText(@"c:\depot_git\workflow\index.html"))
+       };
+       response.Content.Headers.ContentType = new MediaTypeHeaderValue("text/html");
+       return response;
+   }
 }
 	
 
