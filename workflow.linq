@@ -28,7 +28,7 @@ async void Main()
 {
 	string baseAddress = "http://localhost:8090/";
 	var cache = MemoryCache.Default;
-	cache.Add("doc", new Document(1), DateTime.Now.AddDays(1));
+	cache.Add("claim1", new InsuranceClaim(1), DateTime.Now.AddDays(1));
 	using (var app = WebApp.Start<Startup>(url: baseAddress))
 	{
 		"Workflow engine started".Dump();
@@ -36,12 +36,12 @@ async void Main()
 	}
 }
 
-public class Document {
+public class InsuranceClaim {
 	public readonly int Id;
 	public bool isDraft {get;set;}
 	public bool isApproved {get;set;}
 	
-	public Document (int id) {
+	public InsuranceClaim (int id) {
 		isDraft = true;
 		Id = id;
 	}
@@ -50,19 +50,6 @@ public class Document {
 		if (password != "admin") return;
 		isApproved = true;
 	}
-
-    /// <summary>
-    /// The send for approval method.
-    /// Send document for approval by setting
-	/// documented to for approval state.
-	/// Best-practice documenation should make it look like code is 
-	/// documented, obscure the important details with
-	/// crap comments and hide the rest of the code from the developer.
-    /// </summary>
-    /// <returns>void</returns>
-	/// <remarks>None</remarks>
-	/// <writtenBy>Bjartwolf</writtenBy>
-	/// <writtenAt>01-02-2012</writtenAt>
 
 	public void sendForApproval() {
 		isDraft = false;
@@ -80,52 +67,52 @@ public class Document {
 	}
 }
 
-public class DocumentController : ApiController
+public class InsuranceClaimController : ApiController
 {
-	private Document _doc;
-	public DocumentController () {
-	   _doc = MemoryCache.Default.Get("doc") as Document;
+	private InsuranceClaim _insuranceClaim;
+	public InsuranceClaimController () {
+	   _insuranceClaim = MemoryCache.Default.Get("claim1") as InsuranceClaim;
 	}
 
    [Route("approve/{password}")]
-   public Document GetApprove(string password)
+   public InsuranceClaim GetApprove(string password)
    {
-       _doc.approve(password);
-	   return _doc;
+       _insuranceClaim.approve(password);
+	   return _insuranceClaim;
    }
 
    [Route("sendForComments")]
-   public Document GetSendForComments()
+   public InsuranceClaim GetSendForComments()
    {
-   	   _doc.sendForComments();
-       return _doc;
+   	   _insuranceClaim.sendForComments();
+       return _insuranceClaim;
    }
 
    [Route("returnFromCommenting")]
-   public Document GetReturnFromCommenting()
+   public InsuranceClaim GetReturnFromCommenting()
    {
-   	   _doc.returnFromCommenting();
-       return _doc;
+   	   _insuranceClaim.returnFromCommenting();
+       return _insuranceClaim;
    }
 
    [Route("sendForApproval")]
-   public Document GetSendForApproval()
+   public InsuranceClaim GetSendForApproval()
    {
-   	   _doc.sendForApproval();
-       return _doc;
+   	   _insuranceClaim.sendForApproval();
+       return _insuranceClaim;
    }
 
    [Route("state")]
    public string GetState()
    {
-   	   if (_doc.isApproved) {
-	   		if (_doc.isDraft) {
+   	   if (_insuranceClaim.isApproved) {
+	   		if (_insuranceClaim.isDraft) {
 	   			return "Sent to collegue for comments";
 			} else {
 	   			return "Approved";
 	   		}
 		}
-	   if (_doc.isDraft) {
+	   if (_insuranceClaim.isDraft) {
 	   		return "Draft";
 	   }
 	   return "For Approval";
