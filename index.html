@@ -11,7 +11,9 @@
 var app = angular.module('superapp',[]);
 app.controller('DocumentController', ['$http', function($http) {
   var wf = this;
+  
   wf.greeting = 'Hola!';
+  
   wf.adminpassword = "";
   wf.approve = function () {
 	$http.get('/approve/'+wf.adminpassword).success(function(data) {
@@ -33,7 +35,6 @@ app.controller('DocumentController', ['$http', function($http) {
 		wf.greeting = data;
 		});
   };
-
 }]);
 
 </script>

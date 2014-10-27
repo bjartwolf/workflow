@@ -24,47 +24,89 @@
   <Namespace>System.Web.Http</Namespace>
 </Query>
 
+public class MoneyBin {
+	public MoneyBin(int money) {
+		Money = money;
+	}
+	public int Money {get;set;}
+}
+
 async void Main()
 {
 	string baseAddress = "http://localhost:8090/";
 	var cache = MemoryCache.Default;
-	cache.Add("claim1", new InsuranceClaim(1), DateTime.Now.AddDays(1));
-	using (var app = WebApp.Start<Startup>(url: baseAddress))
+	var claim = new InsuranceClaim(1);
+	cache.Add("claim1", claim, DateTime.MaxValue);
+	cache.Add("cash", new MoneyBin(100000), DateTime.MaxValue);
+	
+	
+	claim.Owner = "Bjartnes";
+	claim.RequestAmount = 10000;
+	claim.SendToEvaluation();
+	claim.SetAcceptedAmount(8000);
+	claim.AcceptAmount();
+	cache.Dump();
+/*	using (var app = WebApp.Start<Startup>(url: baseAddress))
 	{
 		"Workflow engine started".Dump();
 		Console.ReadLine();
 	}
+*/
 }
+
 
 public class InsuranceClaim {
 	public readonly int Id;
-	public bool isDraft {get;set;}
-	public bool isApproved {get;set;}
+	public string Owner {get;set;}
+	public int ApprovedAmount {get;set;}
+	public int RequestAmount {get;set;}
+	public int? PayedAmount {get;set;}
+	public string Approver {get; set;}
+	public bool? forApproval {get;set;}
+	public bool IsEvaluted {get;set;}
+	public bool IsAccepted {get;set;}
+	public bool IsDraft {get;set;}
+	public bool IsCompleted {get;set;}	
 	
 	public InsuranceClaim (int id) {
-		isDraft = true;
+		IsDraft = true;
 		Id = id;
+	}
+	
+	public void SendToEvaluation() {
+		forApproval = true;
+	}
+	
+	public void AcceptAmount() {
+		IsAccepted = true;
+		MakePayment();
+		SetPaymentComplete();
+	}
+	
+	public void SetPaymentComplete() {
+		IsCompleted = true;
+	}
+	
+	private void MakePayment() {
+	   var moneyBin = (MoneyBin)MemoryCache.Default.Get("cash");
+	   moneyBin.Money = moneyBin.Money - ApprovedAmount;
+	}
+	
+	public void SetAcceptedAmount(int amount) {
+		ApprovedAmount = amount;
+		IsEvaluted = true;
 	}
 		
 	public void approve(string password) {
 		if (password != "admin") return;
-		isApproved = true;
 	}
 
 	public void sendForApproval() {
-		isDraft = false;
+		if (!forApproval.Value) {
+			IsDraft = false;
+		}
 	}
 
-	public void returnFromCommenting() {
-		isDraft = false;
-		isApproved = false;
-	}
-		
-	public void sendForComments() {
-		// Both means commentmode
-		isDraft = true;
-		isApproved = true;
-	}
 }
 
 public class InsuranceClaimController : ApiController
@@ -84,14 +126,14 @@ public class InsuranceClaimController : ApiController
    [Route("sendForComments")]
    public InsuranceClaim GetSendForComments()
    {
-   	   _insuranceClaim.sendForComments();
+//   	   _insuranceClaim.sendForComments();
        return _insuranceClaim;
    }
 
    [Route("returnFromCommenting")]
    public InsuranceClaim GetReturnFromCommenting()
    {
-   	   _insuranceClaim.returnFromCommenting();
+//   	   _insuranceClaim.returnFromCommenting();
        return _insuranceClaim;
    }
 
@@ -105,14 +147,14 @@ public class InsuranceClaimController : ApiController
    [Route("state")]
    public string GetState()
    {
-   	   if (_insuranceClaim.isApproved) {
-	   		if (_insuranceClaim.isDraft) {
+//   	   if (_insuranceClaim.IsApproved) {
+	   		if (_insuranceClaim.IsDraft) {
 	   			return "Sent to collegue for comments";
 			} else {
 	   			return "Approved";
 	   		}
-		}
-	   if (_insuranceClaim.isDraft) {
+//		}
+	   if (_insuranceClaim.IsDraft) {
 	   		return "Draft";
 	   }
 	   return "For Approval";
