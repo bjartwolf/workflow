@@ -44,8 +44,12 @@ async void Main()
 	claim.RequestAmount = 10000;
 	claim.SendToEvaluation();
 	claim.SetAcceptedAmount(8000, "Bjartwolf");
-	claim.AcceptAmount();
 	//claim.AcceptAmount();
+	claim.MakeComplaint();
+	//claim.ProcessComplaint(9000, "BEB");
+	claim.AcceptAmount();
+	claim.AcceptAmount();
+claim.AcceptAmount();
 
 	cache.Dump();
 /*	using (var app = WebApp.Start<Startup>(url: baseAddress))
@@ -61,31 +65,49 @@ public class InsuranceClaim {
 	public readonly int Id;
 	public string Owner {get;set;}
 	public int ApprovedAmount {get;set;}
-	public int RequestAmount {get;set;}
+	public int? RequestAmount {get;set;}
 	public int? PayedAmount {get;set;}
 	public string Approver {get; set;}
 	public bool? forApproval {get;set;}
 	public bool IsEvaluted {get;set;}
 	public bool IsAccepted {get;set;}
-	public bool IsDraft {get;set;}
 	public bool IsCompleted {get;set;}	
-	
+	public bool HasComplained {get; set;}
+    // ALWAYS CHECK FOR CORRECT STATE IN METHOD BEFORE PROCESS PAYMENT
 	public InsuranceClaim (int id) {
-		IsDraft = true;
 		Id = id;
 	}
 	
 	public void SendToEvaluation() {
+	    if (RequestAmount == null) return;
 		forApproval = true;
 	}
 	
 	public void AcceptAmount() {
+		if (IsCompleted) return;
 		IsAccepted = true;
 		MakePayment();
 		SetPaymentComplete();
 	}
 	
+	/// <summary>
+	/// The SetPaymentComplete method.
+	/// Sets the completed state completed.
+	/// </summary>
+	/// <parameters>
+	/// DateTime completedDate
+	/// </parameters>
+	/// <author>
+	/// cx\beb
+	/// </author>
+	/// <returns>
+	/// void
+	/// </returns>
+	/// <Last modified>
+	/// 23.91.29
+	/// </Last modified>
 	public void SetPaymentComplete() {
+		if (HasComplained) return;
 		IsCompleted = true;
 	}
 	
@@ -97,6 +119,18 @@ public class InsuranceClaim {
 	   moneyBin.Money = moneyBin.Money - ApprovedAmount;
 	   PayedAmount = ApprovedAmount;
 	}
+
+	public void ProcessComplaint (int? newAmount, string approver) {
+		Approver = approver;
+		if (newAmount.HasValue) {
+			ApprovedAmount = newAmount.Value;
+		}
+		HasComplained = false;
+	}
+
+	public void MakeComplaint() {
+		HasComplained = true;	
+	}
 	
 	public void SetAcceptedAmount(int amount, string approver) {
 		ApprovedAmount = amount;
@@ -106,12 +140,6 @@ public class InsuranceClaim {
 		
 	public void approve(string password) {
 		if (password != "admin") return;
-	}
-
-	public void sendForApproval() {
-		if (!forApproval.Value) {
-			IsDraft = false;
-		}
 	}
 
 }
@@ -147,24 +175,14 @@ public class InsuranceClaimController : ApiController
    [Route("sendForApproval")]
    public InsuranceClaim GetSendForApproval()
    {
-   	   _insuranceClaim.sendForApproval();
+//   	   _insuranceClaim.sendForApproval();
        return _insuranceClaim;
    }
 
    [Route("state")]
-   public string GetState()
+   public void GetState()
    {
 //   	   if (_insuranceClaim.IsApproved) {
-	   		if (_insuranceClaim.IsDraft) {
-	   			return "Sent to collegue for comments";
-			} else {
-	   			return "Approved";
-	   		}
-//		}
-	   if (_insuranceClaim.IsDraft) {
-	   		return "Draft";
-	   }
-	   return "For Approval";
     }
 	
    [Route("")]
