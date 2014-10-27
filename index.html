@@ -3,35 +3,53 @@
 <head>
 
 <meta charset="UTF-8">
-<script src="http://ajax.googleapis.com/ajax/libs/angularjs/1.3.0/angular.min.js"></script>
+<!--<script src="http://ajax.googleapis.com/ajax/libs/angularjs/1.3.0/angular.min.js"> <--!>
+<script src="angular.min.js">
+
+</script>
 <script>
 var app = angular.module('superapp',[]);
-app.controller('GreetingController', ['$scope','$http', function($scope,$http) {
-  $scope.greeting = 'Hola!';
-  $scope.approve = function () {
-        $http.get('/approve/adfdafs').success(function(data) {
-		$scope.greeting = data;
+app.controller('DocumentController', ['$http', function($http) {
+  var wf = this;
+  wf.greeting = 'Hola!';
+  wf.adminpassword = "";
+  wf.approve = function () {
+	$http.get('/approve/'+wf.adminpassword).success(function(data) {
+		wf.greeting = data;
 		});
-  }
+  };
+  wf.sendForComments = function () {
+        $http.get('/sendForComments').success(function(data) {
+		wf.greeting = data;
+		});
+  };
+  wf.sendForApproval = function () {
+        $http.get('/sendForApproval').success(function(data) {
+		wf.greeting = data;
+		});
+  };
+  wf.returnFromCommenting = function () {
+        $http.get('/returnFromCommenting').success(function(data) {
+		wf.greeting = data;
+		});
+  };
+
 }]);
 
 </script>
 <title>Title of the document</title>
 </head>
 
-<body>
-    <input type="text" ng-model="sometext" />
-
+<body >
+    <div ng-controller="DocumentController as wf">
     <h1>Hello {{ sometext }}</h1>
-	<div ng-controller="GreetingController">
-	<input type="password"></input>
-        <button ng-click="approve()">Approve</button>
-	<button ng-click="sendForComments()">Send for comments</button>
-	
-	 {{ greeting }}
-</div>
-
-
+	<input type="password" ng-model="wf.adminpassword"></input>
+        <button ng-click="wf.approve()">Approve</button>
+	<button ng-click="wf.sendForComments()">Send for comments</button>
+	<button ng-click="wf.returnFromCommenting()">Return from commenting</button>
+	<button ng-click="wf.sendForApproval()">Send for approval</button>
+	 {{ wf.greeting }}
+    </div>
 </body>
 
 </html>

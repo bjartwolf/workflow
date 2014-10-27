@@ -141,6 +141,17 @@ public class DocumentController : ApiController
        response.Content.Headers.ContentType = new MediaTypeHeaderValue("text/html");
        return response;
    }
+   [Route("angular.min.js")]
+   public HttpResponseMessage GetAngular()
+   {
+       var response = new HttpResponseMessage(HttpStatusCode.OK)
+       {
+           Content = new StringContent(File.ReadAllText(@"C:\depot_git\ng-demos\ng-1.3 playground\scripts\angular.min.js"))
+       };
+      // response.Content.Headers.ContentType = new MediaTypeHeaderValue("");
+       return response;
+   }
+
 }
 	
 
