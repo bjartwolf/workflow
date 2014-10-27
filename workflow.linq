@@ -45,6 +45,8 @@ async void Main()
 	claim.SendToEvaluation();
 	claim.SetAcceptedAmount(8000, "Bjartwolf");
 	claim.AcceptAmount();
+	//claim.AcceptAmount();
+
 	cache.Dump();
 /*	using (var app = WebApp.Start<Startup>(url: baseAddress))
 	{
@@ -88,6 +90,9 @@ public class InsuranceClaim {
 	}
 	
 	private void MakePayment() {
+	   if (IsCompleted) {
+	   	   throw new Exception("Should not accept twice!");
+	   }
 	   var moneyBin = (MoneyBin)MemoryCache.Default.Get("cash");
 	   moneyBin.Money = moneyBin.Money - ApprovedAmount;
 	   PayedAmount = ApprovedAmount;
