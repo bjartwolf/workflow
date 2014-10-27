@@ -43,7 +43,7 @@ async void Main()
 	claim.Owner = "Bjartnes";
 	claim.RequestAmount = 10000;
 	claim.SendToEvaluation();
-	claim.SetAcceptedAmount(8000);
+	claim.SetAcceptedAmount(8000, "Bjartwolf");
 	claim.AcceptAmount();
 	cache.Dump();
 /*	using (var app = WebApp.Start<Startup>(url: baseAddress))
@@ -90,10 +90,12 @@ public class InsuranceClaim {
 	private void MakePayment() {
 	   var moneyBin = (MoneyBin)MemoryCache.Default.Get("cash");
 	   moneyBin.Money = moneyBin.Money - ApprovedAmount;
+	   PayedAmount = ApprovedAmount;
 	}
 	
-	public void SetAcceptedAmount(int amount) {
+	public void SetAcceptedAmount(int amount, string approver) {
 		ApprovedAmount = amount;
+		Approver = approver;
 		IsEvaluted = true;
 	}
 		
