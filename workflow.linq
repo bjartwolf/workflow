@@ -35,21 +35,18 @@ async void Main()
 {
 	string baseAddress = "http://localhost:8090/";
 	var cache = MemoryCache.Default;
-	var claim = new InsuranceClaim(1);
-	cache.Add("claim1", claim, DateTime.MaxValue);
 	cache.Add("cash", new MoneyBin(100000), DateTime.MaxValue);
-	
-	
-	claim.Owner = "Bjartnes";
-	claim.RequestAmount = 10000;
-	claim.SendToEvaluation();
-	claim.SetAcceptedAmount(8000, "Bjartwolf");
+	var claim = new InsuranceClaim();
+	claim.Create("bjartnes", 10000);
+	cache.Add("claim1", claim, DateTime.MaxValue);
+	claim.SetAcceptedAmount(8000, "Bjartwolf", "admin");
 	//claim.AcceptAmount();
-	claim.MakeComplaint();
+//	claim.MakeComplaint();
 	//claim.ProcessComplaint(9000, "BEB");
-	claim.AcceptAmount();
-	claim.AcceptAmount();
-claim.AcceptAmount();
+//	claim.AcceptAmount();
+//	claim.AcceptAmount();
+//claim.AcceptAmount();
+//	cache.Add("claim1", claim, DateTime.MaxValue);
 
 	cache.Dump();
 /*	using (var app = WebApp.Start<Startup>(url: baseAddress))
@@ -60,7 +57,8 @@ claim.AcceptAmount();
 */
 }
 
-
+// Dette er åpenbart FØR vi subklasser... Subklassing gjør det bedre, OO gjort riktig.
+// Strukturen er gitt av 
 public class InsuranceClaim {
 	public readonly int Id;
 	public string Owner {get;set;}
@@ -74,13 +72,19 @@ public class InsuranceClaim {
 	public bool IsCompleted {get;set;}	
 	public bool HasComplained {get; set;}
     // ALWAYS CHECK FOR CORRECT STATE IN METHOD BEFORE PROCESS PAYMENT
-	public InsuranceClaim (int id) {
-		Id = id;
+	public InsuranceClaim () {
+		var cache = MemoryCache.Default;
+		var nextId = cache.Count();
+		nextId.Dump();
+		Id = nextId;
+		cache.Add("claim"+Id, this, DateTime.MaxValue);
 	}
 	
-	public void SendToEvaluation() {
-	    if (RequestAmount == null) return;
-		forApproval = true;
+	public InsuranceClaim Create(string owner, int requestAmount) {
+	    if (requestAmount == null) return null;
+		var claim = new InsuranceClaim() { Owner = owner, RequestAmount =requestAmount};
+		claim.forApproval = true;
+		return claim;
 	}
 	
 	public void AcceptAmount() {
@@ -132,16 +136,12 @@ public class InsuranceClaim {
 		HasComplained = true;	
 	}
 	
-	public void SetAcceptedAmount(int amount, string approver) {
+	public void SetAcceptedAmount(int amount, string approver, string password) {
+		if (password != "admin") return;
 		ApprovedAmount = amount;
 		Approver = approver;
 		IsEvaluted = true;
 	}
-		
-	public void approve(string password) {
-		if (password != "admin") return;
-	}
-
 }
 
 public class InsuranceClaimController : ApiController
@@ -151,31 +151,24 @@ public class InsuranceClaimController : ApiController
 	   _insuranceClaim = MemoryCache.Default.Get("claim1") as InsuranceClaim;
 	}
 
-   [Route("approve/{password}")]
-   public InsuranceClaim GetApprove(string password)
+   [Route("setAcceptedAmount/{approver}/{amount}/{password}")]
+   public InsuranceClaim GetSetAcceptedAmount(string approver, int amount, string password)
    {
-       _insuranceClaim.approve(password);
+       _insuranceClaim.SetAcceptedAmount(amount, approver, password);
 	   return _insuranceClaim;
    }
 
-   [Route("sendForComments")]
-   public InsuranceClaim GetSendForComments()
+   [Route("ProcessComplaint/{approver}/{newAmount}")]
+   public InsuranceClaim GetProcessComplaint (string approver, int? newAmount)
    {
-//   	   _insuranceClaim.sendForComments();
+	   _insuranceClaim.ProcessComplaint(newAmount,approver);
        return _insuranceClaim;
    }
 
-   [Route("returnFromCommenting")]
-   public InsuranceClaim GetReturnFromCommenting()
+   [Route("sendToEvaluation/{owner}/{amount}")]
+   public InsuranceClaim GetSendToEvalution(string owner, int amount)
    {
-//   	   _insuranceClaim.returnFromCommenting();
-       return _insuranceClaim;
-   }
-
-   [Route("sendForApproval")]
-   public InsuranceClaim GetSendForApproval()
-   {
-//   	   _insuranceClaim.sendForApproval();
+   	   _insuranceClaim.Create(owner, amount);
        return _insuranceClaim;
    }
 
