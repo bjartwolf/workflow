@@ -69,8 +69,8 @@ app.controller('DocumentController', ['$http', '$timeout', function($http, $time
     <div ng-controller="DocumentController as wf">
     <h1>Hello {{ wf.name }}</h1>
     <div> {{ wf.message }} </div>
-	<input type="number" ng-model="wf.amount">Amount</input> <p>
-    <input type="text" ng-model="wf.name">Name</input> <p>
+	<input required type="number" ng-model="wf.amount">Amount</input> <p>
+    <input required type="text" ng-model="wf.name">Name</input> <p>
         <button ng-show="wf.showCreateButton" ng-click="wf.create()">Create insurance claim</button>
 	<button ng-show="wf.showComplainButton" ng-click="wf.complain()">Complain</button>
         <button ng-show="wf.showApproveButton" ng-click="wf.approve()">Approve</button>
