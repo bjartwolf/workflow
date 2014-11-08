@@ -12,44 +12,51 @@ var app = angular.module('superapp',[]);
 app.controller('DocumentController', ['$http', function($http) {
   var wf = this;
   
-  wf.greeting = 'Hola!';
-  
-  wf.adminpassword = "";
-  wf.approve = function () {
-	$http.get('/approve/'+wf.adminpassword).success(function(data) {
-		wf.greeting = data;
+  wf.create= function () {
+        $http.get('/createClaim/'+wf.name+'/'+wf.amount).success(function(data) {
+		wf.showCreateButton = false;
+		wf.showRefreshButton = true;
+		wf.id = data.Id;
 		});
   };
-  wf.sendForComments = function () {
-        $http.get('/sendForComments').success(function(data) {
-		wf.greeting = data;
+  wf.refresh = function () {
+        $http.get('/claim/'+wf.id).success(function(data) {
+		console.log(data);
+		if (data.State == "reviewed") {
+  			wf.showComplainButton = true;
+			wf.showApproveButton = true;
+  			wf.showRefreshButton = false;
+		}
 		});
-  };
-  wf.sendForApproval = function () {
-        $http.get('/sendForApproval').success(function(data) {
-		wf.greeting = data;
+  }
+  wf.moneyBack = 0;
+  wf.approve= function () {
+        $http.get('/accept/'+wf.id).success(function(data) {
+			wf.moneyBack += data.ApprovedAmount;
+			wf.showMoneyBack = true;
+			wf.showComplainButton = false;
+			//wf.showApproveButton = false;
 		});
-  };
-  wf.returnFromCommenting = function () {
-        $http.get('/returnFromCommenting').success(function(data) {
-		wf.greeting = data;
-		});
-  };
+  };  
+  wf.showCreateButton = true;
+  wf.showRefreshButton = true;
+  wf.showMoneyBack = false;
 }]);
 
 </script>
-<title>Title of the document</title>
+<title>Angular 1.3 4ever. Really. 4ever.</title>
 </head>
 
 <body >
     <div ng-controller="DocumentController as wf">
-    <h1>Hello {{ sometext }}</h1>
-	<input type="password" ng-model="wf.adminpassword"></input>
-        <button ng-click="wf.approve()">Approve</button>
-	<button ng-click="wf.sendForComments()">Send for comments</button>
-	<button ng-click="wf.returnFromCommenting()">Return from commenting</button>
-	<button ng-click="wf.sendForApproval()">Send for approval</button>
-	 {{ wf.greeting }}
+    <h1>Hello {{ wf.name }}</h1>
+	<input type="number" ng-model="wf.amount">Amount</input> <p>
+    <input type="text" ng-model="wf.name">Name</input> <p>
+        <button ng-show="wf.showCreateButton" ng-click="wf.create()">Create insurance claim</button>
+	<button ng-show="wf.showRefreshButton" ng-click="wf.refresh()">Refresh claim</button>
+	<button ng-show="wf.showComplainButton" ng-click="wf.complain()">Complain</button>
+        <button ng-show="wf.showApproveButton" ng-click="wf.approve()">Approve</button>
+	<div ng-show="wf.showMoneyBack"> {{ wf.moneyBack }} </div>
     </div>
 </body>
 

@@ -53,8 +53,11 @@ public class InsuranceClaim {
 	[DataMember]
 	public readonly int Id;
 	public string Owner {get;set;}
+	[DataMember]
 	public int ApprovedAmount {get;set;}
+	[DataMember]
 	public int RequestAmount {get;set;}
+	[DataMember]
 	public int PayedAmount {get;set;}
 	public string Approver {get; set;}
   	[DataMember]
@@ -142,9 +145,9 @@ public class InsuranceClaim {
 	}
 	
 	public void ProcessComplaint(int? newAmount, string approver, string password) {
+		if (password != "admin") return;
 		Machine.Accept("reviewed");
 		Draw();
-		if (password != "admin") return;
 		if (newAmount.HasValue) {
 			ApprovedAmount = newAmount.Value;
 		}
@@ -152,9 +155,9 @@ public class InsuranceClaim {
 	}
 	
 	public void Review(int amount, string approver, string password) {
+		if (password != "admin") return;
 		Machine.Accept("reviewed");
 		Draw();
-		if (password != "admin") return;
 		ApprovedAmount = amount;
 		Approver = approver;
 	}
@@ -171,7 +174,6 @@ public class InsuranceClaimController : ApiController
    public InsuranceClaim Review(int id, string approver, int amount, string password)
    {
   	   var insuranceClaim = loadClaim(id);
-	   insuranceClaim.Dump();
 	   insuranceClaim.Review(amount, approver, password);
 	   return insuranceClaim;
    }
@@ -201,6 +203,12 @@ public class InsuranceClaimController : ApiController
        var insuranceClaim = new InsuranceClaim(owner, amount);
 	   insuranceClaim.Draw();
 	   return insuranceClaim;
+   }
+
+   [Route("claim/{id}")]
+   public InsuranceClaim GetClaim(int id)
+   {
+		return loadClaim(id);
    }
 
    [HttpGet]
