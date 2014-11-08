@@ -1,14 +1,10 @@
 <Query Kind="Program">
-  <Connection>
-    <ID>bfa572dc-24e2-4dc6-affd-580c58933830</ID>
-    <Persist>true</Persist>
-    <Server>localhost</Server>
-    <Database>MyFastDB</Database>
-    <ShowServer>true</ShowServer>
-  </Connection>
+  <Reference Relative="stateful\Automata\bin\Debug\Automata.dll">C:\depot_git\workflow\stateful\Automata\bin\Debug\Automata.dll</Reference>
   <Reference>&lt;RuntimeDirectory&gt;\System.Net.Http.dll</Reference>
   <Reference>&lt;RuntimeDirectory&gt;\System.Runtime.Caching.dll</Reference>
+  <Reference>&lt;RuntimeDirectory&gt;\System.Runtime.Serialization.dll</Reference>
   <NuGetReference>Microsoft.AspNet.WebApi.OwinSelfHost</NuGetReference>
+  <Namespace>Automata</Namespace>
   <Namespace>Microsoft.Owin.Hosting</Namespace>
   <Namespace>Owin</Namespace>
   <Namespace>System</Namespace>
@@ -19,6 +15,7 @@
   <Namespace>System.Net.Http</Namespace>
   <Namespace>System.Net.Http.Headers</Namespace>
   <Namespace>System.Runtime.Caching</Namespace>
+  <Namespace>System.Runtime.Serialization</Namespace>
   <Namespace>System.Text</Namespace>
   <Namespace>System.Threading.Tasks</Namespace>
   <Namespace>System.Web.Http</Namespace>
@@ -31,24 +28,14 @@ public class MoneyBin {
 	public int Money {get;set;}
 }
 
+
 async void Main()
 {
 	string baseAddress = "http://localhost:8090/";
 	var cache = MemoryCache.Default;
 	cache.Add("cash", new MoneyBin(100000), DateTime.MaxValue);
-	var claim = new InsuranceClaim();
-	claim.Create("bjartnes", 10000);
-	cache.Add("claim1", claim, DateTime.MaxValue);
-	claim.SetAcceptedAmount(8000, "Bjartwolf", "admin");
-//	claim.AcceptAmount();
-//	claim.MakeComplaint();
-//	claim.ProcessComplaint(9000, "BEB");
-//	claim.AcceptAmount();
-//	claim.AcceptAmount();
-//	claim.AcceptAmount();
-//	cache.Add("claim1", claim, DateTime.MaxValue);
+	var claim = new InsuranceClaim { Owner = "bjartnes", RequestAmount = 10000};
 	
-	cache.Dump();
 	using (var app = WebApp.Start<Startup>(url: baseAddress))
 	{
 		"Workflow engine started".Dump();
@@ -58,67 +45,57 @@ async void Main()
 
 // Dette er åpenbart FØR vi subklasser... Subklassing gjør det bedre, OO gjort riktig.
 // Strukturen er gitt av 
+[DataContract]
 public class InsuranceClaim {
+	[DataMember]
 	public readonly int Id;
 	public string Owner {get;set;}
 	public int ApprovedAmount {get;set;}
 	public int? RequestAmount {get;set;}
 	public int? PayedAmount {get;set;}
 	public string Approver {get; set;}
-	public bool? forApproval {get;set;}
-	public bool IsEvaluted {get;set;}
-	public bool IsAccepted {get;set;}
-	public bool IsCompleted {get;set;}	
-	public bool HasComplained {get; set;}
+
+	public Automaton<string> Machine {get; set;}
+	public List<State<string>> InsuranceStates {get; set;}
     // ALWAYS CHECK FOR CORRECT STATE IN METHOD BEFORE PROCESS PAYMENT
+
+	public void Draw() {
+	    Util.ClearResults();
+		var thing = new DrawThing();
+		var str = thing.GetDotGraphString(Machine, InsuranceStates);
+		var img = thing.CreateGraphImage(str);
+		img.Dump();
+		MemoryCache.Default.Get("cash").Dump();
+	}
+
 
 	public InsuranceClaim () {
 		var cache = MemoryCache.Default;
-		var nextId = cache.Count();
-		nextId.Dump();
-		Id = nextId;
+		var init = new State<string>("init", () => {"INITSTATE".Dump(); });
+		var accepted = new State<string>("accepted", () => { ApprovedAmount = 100; MakePayment();});
+		init.To(accepted).On("approve");
+		InsuranceStates = new List<State<string>> {init, accepted};
+		Machine = new Automaton<string>(InsuranceStates.First());
+		Id = cache.Count();
 		cache.Add("claim"+Id, this, DateTime.MaxValue);
+		Draw();
 	}
 	
 	public InsuranceClaim Create(string owner, int requestAmount) {
-	    if (requestAmount == null) return null;
 		var claim = new InsuranceClaim() { Owner = owner, RequestAmount =requestAmount};
-		claim.forApproval = true;
+		Draw();
 		return claim;
 	}
 	
 	public void AcceptAmount() {
-		if (IsCompleted) return;
-		IsAccepted = true;
 		MakePayment();
 		SetPaymentComplete();
 	}
 	
-	/// <summary>
-	/// The SetPaymentComplete method.
-	/// Sets the completed state completed.
-	/// </summary>
-	/// <parameters>
-	/// DateTime completedDate
-	/// </parameters>
-	/// <author>
-	/// cx\beb
-	/// </author>
-	/// <returns>
-	/// void
-	/// </returns>
-	/// <Last modified>
-	/// 23.91.29
-	/// </Last modified>
 	public void SetPaymentComplete() {
-		if (HasComplained) return;
-		IsCompleted = true;
 	}
 	
 	private void MakePayment() {
-	   if (IsCompleted) {
-	   	   throw new Exception("Should not accept twice!");
-	   }
 	   var moneyBin = (MoneyBin)MemoryCache.Default.Get("cash");
 	   moneyBin.Money = moneyBin.Money - ApprovedAmount;
 	   PayedAmount = ApprovedAmount;
@@ -126,21 +103,16 @@ public class InsuranceClaim {
 
 	public void ProcessComplaint (int? newAmount, string approver) {
 		Approver = approver;
-		if (newAmount.HasValue) {
-			ApprovedAmount = newAmount.Value;
-		}
-		HasComplained = false;
+		ApprovedAmount = newAmount.Value;
 	}
 
 	public void MakeComplaint() {
-		HasComplained = true;	
 	}
 	
 	public void SetAcceptedAmount(int amount, string approver, string password) {
 		if (password != "admin") return;
 		ApprovedAmount = amount;
 		Approver = approver;
-		IsEvaluted = true;
 	}
 }
 
@@ -154,6 +126,15 @@ public class InsuranceClaimController : ApiController
 //	 Try to popualate with correct id based on route
 	   _insuranceClaim = MemoryCache.Default.Get("claim1") as InsuranceClaim;
 	}
+
+   [Route("testaccept/{id}")]
+   public InsuranceClaim GetSetAcceptedAmount(int id)
+   {
+  	   _insuranceClaim = loadClaim(id);
+	   _insuranceClaim.Machine.Accept("approve");
+	   _insuranceClaim.Draw();
+	   return _insuranceClaim;
+   }
 
    [Route("setAcceptedAmount/{id}/{approver}/{amount}/{password}")]
    public InsuranceClaim GetSetAcceptedAmount(int id, string approver, int amount, string password)
