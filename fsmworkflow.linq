@@ -90,7 +90,6 @@ public class InsuranceClaim {
 		MemoryCache.Default.Get("cash").Dump();
 	}
 
-
 	public InsuranceClaim (string owner, int requestAmount) {
 		// States
 		var created = new State<string>("created", () => { });
@@ -166,6 +165,15 @@ public class InsuranceClaimController : ApiController
    [HttpGet]
    [Route("review/{id}/{approver}/{password}/{amount}")]
    public InsuranceClaim Review(int id, string approver, string password, int? amount)
+   {
+  	   var insuranceClaim = loadClaim(id);
+	   insuranceClaim.Review(amount, approver, password);
+	   return insuranceClaim;
+   }
+
+   [HttpGet]
+   [Route("reviewcomplaint/{id}/{approver}/{password}/{amount}")]
+   public InsuranceClaim ReviewComplaint(int id, string approver, string password, int? amount)
    {
   	   var insuranceClaim = loadClaim(id);
 	   insuranceClaim.Review(amount, approver, password);

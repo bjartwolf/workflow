@@ -1,11 +1,4 @@
 <Query Kind="Program">
-  <Connection>
-    <ID>bfa572dc-24e2-4dc6-affd-580c58933830</ID>
-    <Persist>true</Persist>
-    <Server>localhost</Server>
-    <Database>MyFastDB</Database>
-    <ShowServer>true</ShowServer>
-  </Connection>
   <Reference>&lt;RuntimeDirectory&gt;\System.Net.Http.dll</Reference>
   <Reference>&lt;RuntimeDirectory&gt;\System.Runtime.Caching.dll</Reference>
   <NuGetReference>Microsoft.AspNet.WebApi.OwinSelfHost</NuGetReference>
@@ -32,6 +25,7 @@ public class MoneyBin {
 	public void Withdraw(int amount) {
 		if (amount > Money) throw new Exception("Not enough money");
 		Money -= amount;
+		Money.Dump();
 	}
 	public int Money {get; private set;}
 }
@@ -48,9 +42,13 @@ async void Main()
 		Console.ReadLine();
 	}
 }
-
-// Dette er åpenbart FØR vi subklasser... Subklassing gjør det bedre, OO gjort riktig.
-// Strukturen er gitt av 
+// <summary>
+// This is before we bring subclassing of claims into the picture
+// Subclassing if obviously OO done right, so it would make things much more clear
+// </summary>
+// <remark>
+// ALWAYS CHECK FOR CORRECT STATE IN METHOD BEFORE PROCESS PAYMENT
+// </remark>
 public class InsuranceClaim {
 	public readonly int Id;
 	public string Owner {get;set;}
@@ -63,24 +61,17 @@ public class InsuranceClaim {
 	public bool IsAccepted {get;set;}
 	public bool IsCompleted {get;set;}	
 	public bool HasComplained {get; set;}
-    // ALWAYS CHECK FOR CORRECT STATE IN METHOD BEFORE PROCESS PAYMENT
 
-	public InsuranceClaim () {
+	public InsuranceClaim (string owner, int requestAmount) {
+		Owner = owner;
+		RequestAmount =requestAmount;
+		forApproval = true;
 		var cache = MemoryCache.Default;
-		var nextId = cache.Count();
-		nextId.Dump();
-		Id = nextId;
+		Id = cache.Count();
 		cache.Add("claim"+Id, this, DateTime.MaxValue);
 	}
 	
-	public InsuranceClaim Create(string owner, int requestAmount) {
-	    if (requestAmount == null) return null;
-		var claim = new InsuranceClaim() { Owner = owner, RequestAmount =requestAmount};
-		claim.forApproval = true;
-		return claim;
-	}
-	
-	public void AcceptAmount() {
+	public void Accept() {
 		if (IsCompleted) return;
 		IsAccepted = true;
 		MakePayment();
@@ -113,11 +104,12 @@ public class InsuranceClaim {
 	   	   throw new Exception("Should not accept twice!");
 	   }
 	   var moneyBin = (MoneyBin)MemoryCache.Default.Get("cash");
-	   moneyBin.Money = moneyBin.Money - ApprovedAmount;
+	   moneyBin.Withdraw(ApprovedAmount);
 	   PayedAmount = ApprovedAmount;
 	}
 
-	public void ProcessComplaint (int? newAmount, string approver) {
+	public void ProcessComplaint (int? newAmount, string approver, string password) {
+		if (password != "admin") return;
 		Approver = approver;
 		if (newAmount.HasValue) {
 			ApprovedAmount = newAmount.Value;
@@ -139,43 +131,61 @@ public class InsuranceClaim {
 
 public class InsuranceClaimController : ApiController
 {
-	private InsuranceClaim _insuranceClaim;
 	private InsuranceClaim loadClaim(int id){
 	   return MemoryCache.Default.Get("claim"+id) as InsuranceClaim;
 	}
-	public InsuranceClaimController () {
-//	 Try to popualate with correct id based on route
-	   _insuranceClaim = MemoryCache.Default.Get("claim1") as InsuranceClaim;
-	}
 
-   [Route("setAcceptedAmount/{id}/{approver}/{amount}/{password}")]
-   public InsuranceClaim GetSetAcceptedAmount(int id, string approver, int amount, string password)
+   [HttpGet]
+   [Route("reviewcomplaint/{id}/{approver}/{password}/{amount}")]
+   public InsuranceClaim ReviewComplaint(int id, string approver, string password, int? amount)
    {
-  	   _insuranceClaim = loadClaim(id);
-	   _insuranceClaim.SetAcceptedAmount(amount, approver, password);
-	   return _insuranceClaim;
+   	   var insuranceClaim = loadClaim(id);
+	   insuranceClaim.ProcessComplaint(amount,approver, password);
+       return insuranceClaim;
    }
 
-   [Route("ProcessComplaint/{approver}/{newAmount}")]
-   public InsuranceClaim GetProcessComplaint (string approver, int? newAmount)
+   [HttpGet]
+   [Route("review/{id}/{approver}/{password}/{amount}")]
+   public InsuranceClaim Review(int id, string approver, string password, int amount)
    {
-	   _insuranceClaim.ProcessComplaint(newAmount,approver);
-       return _insuranceClaim;
+  	   var insuranceClaim = loadClaim(id);
+	   insuranceClaim.SetAcceptedAmount(amount, approver, password);
+	   return insuranceClaim;
+   }
+   
+   [HttpGet]
+   [Route("complain/{id}/")]
+   public InsuranceClaim Complain(int id)
+   {
+  	   var insuranceClaim = loadClaim(id);
+	   insuranceClaim.MakeComplaint();
+	   return insuranceClaim;
    }
 
-   [Route("sendToEvaluation/{owner}/{amount}")]
-   public InsuranceClaim GetSendToEvalution(string owner, int amount)
+   
+   [HttpGet]
+   [Route("accept/{id}/")]
+   public InsuranceClaim Accept(int id)
    {
-   	   _insuranceClaim.Create(owner, amount);
-       return _insuranceClaim;
+  	   var insuranceClaim = loadClaim(id);
+	   insuranceClaim.Accept();
+	   return insuranceClaim;
    }
 
-   [Route("state")]
-   public void GetState()
+   [HttpGet]
+   [Route("createClaim/{owner}/{amount}")]
+   public InsuranceClaim CreateClaim(string owner, int amount)
    {
-//   	   if (_insuranceClaim.IsApproved) {
-    }
-	
+   	   return new InsuranceClaim(owner, amount);
+   }
+   
+   [Route("claim/{id}")]
+   public InsuranceClaim GetClaim(int id)
+   {
+		return loadClaim(id);
+   }
+
+
    [Route("")]
    public HttpResponseMessage GetResult()
    {

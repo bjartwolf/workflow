@@ -13,21 +13,27 @@ app.controller('DocumentController', ['$http', '$timeout', function($http, $time
   var wf = this;
   
   wf.create= function () {
+	wf.showCreateButton = false;
         $http.get('/createClaim/'+wf.name+'/'+wf.amount).success(function(data) {
-		wf.showCreateButton = false;
-		wf.showRefreshButton = true;
 		wf.id = data.Id;
 		wf.message = "Waiting for approval...";
 		wf.refresh();
 		});
   };
   wf.complain= function () {
+	wf.showApproveButton = false;
+	wf.showComplainButton = false;
+        wf.message = "Waiting for someone to process complaint...";
         $http.get('/complain/'+wf.id).success(function(data) {
-		wf.showApproveButton = false;
+		wf.refresh();
 		});
   };  
   wf.refresh = function () {
         $http.get('/claim/'+wf.id).success(function(data) {
+		if (data.HasComplained == true || data.State == "complained") { 
+			$timeout(wf.refresh, 500);
+			return;
+		}
 		if (data.ApprovedAmount > 0) {
   			wf.showComplainButton = true;
 			wf.showApproveButton = true;
@@ -41,10 +47,10 @@ app.controller('DocumentController', ['$http', '$timeout', function($http, $time
   }
   wf.moneyBack = 0;
   wf.approve= function () {
+	wf.showComplainButton = false;
         $http.get('/accept/'+wf.id).success(function(data) {
 			wf.moneyBack += data.ApprovedAmount;
 			wf.showMoneyBack = true;
-			wf.showComplainButton = false;
 			//wf.showApproveButton = false;
 		});
   };  
