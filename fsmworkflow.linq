@@ -173,6 +173,15 @@ public class InsuranceClaimController : ApiController
    }
 
    [HttpGet]
+   [Route("complain/{id}/")]
+   public InsuranceClaim Complain(int id)
+   {
+  	   var insuranceClaim = loadClaim(id);
+	   insuranceClaim.MakeComplaint();
+	   return insuranceClaim;
+   }
+
+   [HttpGet]
    [Route("accept/{id}/")]
    public InsuranceClaim Accept(int id)
    {

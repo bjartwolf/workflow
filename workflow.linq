@@ -28,7 +28,12 @@ public class MoneyBin {
 	public MoneyBin(int money) {
 		Money = money;
 	}
-	public int Money {get;set;}
+	
+	public void Withdraw(int amount) {
+		if (amount > Money) throw new Exception("Not enough money");
+		Money -= amount;
+	}
+	public int Money {get; private set;}
 }
 
 async void Main()
@@ -36,19 +41,7 @@ async void Main()
 	string baseAddress = "http://localhost:8090/";
 	var cache = MemoryCache.Default;
 	cache.Add("cash", new MoneyBin(100000), DateTime.MaxValue);
-	var claim = new InsuranceClaim();
-	claim.Create("bjartnes", 10000);
-	cache.Add("claim1", claim, DateTime.MaxValue);
-	claim.SetAcceptedAmount(8000, "Bjartwolf", "admin");
-//	claim.AcceptAmount();
-//	claim.MakeComplaint();
-//	claim.ProcessComplaint(9000, "BEB");
-//	claim.AcceptAmount();
-//	claim.AcceptAmount();
-//	claim.AcceptAmount();
-//	cache.Add("claim1", claim, DateTime.MaxValue);
-	
-	cache.Dump();
+
 	using (var app = WebApp.Start<Startup>(url: baseAddress))
 	{
 		"Workflow engine started".Dump();

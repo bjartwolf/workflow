@@ -9,7 +9,7 @@
 </script>
 <script>
 var app = angular.module('superapp',[]);
-app.controller('DocumentController', ['$http', function($http) {
+app.controller('DocumentController', ['$http', '$timeout', function($http, $timeout) {
   var wf = this;
   
   wf.create= function () {
@@ -17,19 +17,27 @@ app.controller('DocumentController', ['$http', function($http) {
 		wf.showCreateButton = false;
 		wf.showRefreshButton = true;
 		wf.id = data.Id;
+		wf.message = "Waiting for approval...";
+		wf.refresh();
 		});
   };
+  wf.complain= function () {
+        $http.get('/complain/'+wf.id).success(function(data) {
+		wf.showApproveButton = false;
+		});
+  };  
   wf.refresh = function () {
         $http.get('/claim/'+wf.id).success(function(data) {
-		console.log(data);
-		if (data.State == "reviewed") {
+		if (data.ApprovedAmount > 0) {
   			wf.showComplainButton = true;
 			wf.showApproveButton = true;
-  			wf.showRefreshButton = false;
 			wf.showProposedAmount = true;
+			wf.message = "";
 			wf.proposedAmount = data.ApprovedAmount;
-		}
-		});
+		} else {
+			$timeout(wf.refresh, 500);
+		}	
+	});
   }
   wf.moneyBack = 0;
   wf.approve= function () {
@@ -41,10 +49,10 @@ app.controller('DocumentController', ['$http', function($http) {
 		});
   };  
   wf.showCreateButton = true;
-  wf.showRefreshButton = true;
   wf.proposedAmount = 0;
   wf.showProposedAmount = false;
   wf.showMoneyBack = false;
+  wf.message = "";
 }]);
 
 </script>
@@ -54,10 +62,10 @@ app.controller('DocumentController', ['$http', function($http) {
 <body >
     <div ng-controller="DocumentController as wf">
     <h1>Hello {{ wf.name }}</h1>
+    <div> {{ wf.message }} </div>
 	<input type="number" ng-model="wf.amount">Amount</input> <p>
     <input type="text" ng-model="wf.name">Name</input> <p>
         <button ng-show="wf.showCreateButton" ng-click="wf.create()">Create insurance claim</button>
-	<button ng-show="wf.showRefreshButton" ng-click="wf.refresh()">Refresh claim</button>
 	<button ng-show="wf.showComplainButton" ng-click="wf.complain()">Complain</button>
         <button ng-show="wf.showApproveButton" ng-click="wf.approve()">Approve</button>
 	<div ng-show="wf.showProposedAmount"> Proposed amount back: {{ wf.proposedAmount}} </div>
