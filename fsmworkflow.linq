@@ -34,7 +34,7 @@ async void Main()
 	string baseAddress = "http://localhost:8090/";
 	var cache = MemoryCache.Default;
 	cache.Add("cash", new MoneyBin(100000), DateTime.MaxValue);
-	var claim = new InsuranceClaim { Owner = "bjartnes", RequestAmount = 10000};
+	var claim = new InsuranceClaim ("bjartnes", 10000);
 	
 	using (var app = WebApp.Start<Startup>(url: baseAddress))
 	{
@@ -51,8 +51,8 @@ public class InsuranceClaim {
 	public readonly int Id;
 	public string Owner {get;set;}
 	public int ApprovedAmount {get;set;}
-	public int? RequestAmount {get;set;}
-	public int? PayedAmount {get;set;}
+	public int RequestAmount {get;set;}
+	public int PayedAmount {get;set;}
 	public string Approver {get; set;}
   	[DataMember]
 	public string State {
@@ -63,9 +63,17 @@ public class InsuranceClaim {
 			throw new Exception("That's not how state machines work");
 		}
 	}
+	[DataMember]
+	public IEnumerable<string> Transitions {
+		get {
+			return Machine.State.Transitions.Select( t => t.Target.Name);
+		}
+		set {
+			throw new Exception("This is not Erlang");
+		}
+	}
 	public Automaton<string> Machine {get; set;}
 	public List<State<string>> InsuranceStates {get; set;}
-    // ALWAYS CHECK FOR CORRECT STATE IN METHOD BEFORE PROCESS PAYMENT
 
 	public void Draw() {
 	    Util.ClearResults();
@@ -77,46 +85,69 @@ public class InsuranceClaim {
 	}
 
 
-	public InsuranceClaim () {
-		var cache = MemoryCache.Default;
-		var init = new State<string>("init", () => { });
-		var accepted = new State<string>("accepted", () => { ApprovedAmount = 100; MakePayment();});
-		init.To(accepted).On("approve");
-		InsuranceStates = new List<State<string>> {init, accepted};
+	public InsuranceClaim (string owner, int requestAmount) {
+		var created = new State<string>("created", () => { });
+		var complained = new State<string>("complained", () => { });
+		var reviewed = new State<string>("reviewed", () => { });
+		var accepted = new State<string>("accepted", () => {MakePayment(); Machine.Accept("setcomplete");});
+		var completed = new State<string>("completed", () => { });
+		created.To(reviewed).On("reviewed");
+		reviewed.To(accepted).On("accepted");
+		reviewed.To(complained).On("complained");
+		complained.To(reviewed).On("reviewed");
+		accepted.To(completed).On("setcomplete");
+		InsuranceStates = new List<State<string>> {created, reviewed, complained, accepted, completed};
 		Machine = new Automaton<string>(InsuranceStates.First());
+		Owner = owner;
+		RequestAmount = requestAmount;
+		// Add to cache
+		var cache = MemoryCache.Default;
 		Id = cache.Count();
 		cache.Add("claim"+Id, this, DateTime.MaxValue);
 		Draw();
 	}
 	
-	public InsuranceClaim Create(string owner, int requestAmount) {
-		var claim = new InsuranceClaim() { Owner = owner, RequestAmount =requestAmount};
+	public void Accept() {
+		Machine.Accept("accepted");
 		Draw();
-		return claim;
-	}
-	
-	public void AcceptAmount() {
-		MakePayment();
 	}
 	
 	private void MakePayment() {
 	   var moneyBin = (MoneyBin)MemoryCache.Default.Get("cash");
 	   moneyBin.Money = moneyBin.Money - ApprovedAmount;
 	   PayedAmount = ApprovedAmount;
+	   Draw();
+	   
 	}
 
-	public void ProcessComplaint (int? newAmount, string approver) {
+	public void Approve (int newAmount, string approver) {
 		Approver = approver;
-		ApprovedAmount = newAmount.Value;
+		ApprovedAmount = newAmount;
+		Machine.Accept("approved");
+	    Draw();
 	}
 
 	public void MakeComplaint() {
+		Machine.Accept("complained");
+ 	    Draw();
 	}
 	
-	public void SetAcceptedAmount(int amount, string approver, string password) {
+	public void ProcessComplaint(int? newAmount, string approver, string password) {
+		if (password != "admin") return;
+		if (newAmount.HasValue) {
+			ApprovedAmount = newAmount.Value;
+		}
+		Approver = approver;
+		Machine.Accept("reviewed");
+		Draw();
+	}
+	
+	public void Review(int amount, string approver, string password) {
 		if (password != "admin") return;
 		ApprovedAmount = amount;
 		Approver = approver;
+		Machine.Accept("reviewed");
+		Draw();
 	}
 }
 
@@ -126,41 +157,46 @@ public class InsuranceClaimController : ApiController
 	   return MemoryCache.Default.Get("claim"+id) as InsuranceClaim;
 	}
 
-   [Route("testaccept/{id}")]
-   public InsuranceClaim GetSetAcceptedAmount(int id)
+   [HttpGet]
+   [Route("review/{id}/{approver}/{amount}/{password}")]
+   public InsuranceClaim Review(int id, string approver, int amount, string password)
    {
   	   var insuranceClaim = loadClaim(id);
-	   insuranceClaim.Machine.Accept("approve");
+	   insuranceClaim.Dump();
+	   insuranceClaim.Review(amount, approver, password);
+	   return insuranceClaim;
+   }
+
+   [HttpGet]
+   [Route("accept/{id}/")]
+   public InsuranceClaim Accept(int id)
+   {
+  	   var insuranceClaim = loadClaim(id);
+	   insuranceClaim.Accept();
+	   return insuranceClaim;
+   }
+
+   [HttpGet]
+   [Route("ProcessComplaint/{id}/{approver}/{password}/{newAmount}")]
+   public InsuranceClaim ProcessComplaint (int id, string approver, string password, int? newAmount)
+   {
+   	   var insuranceClaim = loadClaim(id);
+	   insuranceClaim.ProcessComplaint(newAmount,approver, password);
+       return insuranceClaim;
+   }
+
+   [HttpGet]
+   [Route("createClaim/{owner}/{amount}")]
+   public InsuranceClaim CreateClaim(string owner, int amount)
+   {
+       var insuranceClaim = new InsuranceClaim(owner, amount);
 	   insuranceClaim.Draw();
 	   return insuranceClaim;
    }
 
-   [Route("setAcceptedAmount/{id}/{approver}/{amount}/{password}")]
-   public InsuranceClaim GetSetAcceptedAmount(int id, string approver, int amount, string password)
-   {
-  	   var insuranceClaim = loadClaim(id);
-	   insuranceClaim.SetAcceptedAmount(amount, approver, password);
-	   return insuranceClaim;
-   }
-
-   [Route("ProcessComplaint/{id}/{approver}/{newAmount}")]
-   public InsuranceClaim GetProcessComplaint (int id, string approver, int? newAmount)
-   {
-   	   var insuranceClaim = loadClaim(id);
-	   insuranceClaim.ProcessComplaint(newAmount,approver);
-       return insuranceClaim;
-   }
-
-   [Route("sendToEvaluation/{id}/{owner}/{amount}")]
-   public InsuranceClaim GetSendToEvalution(int id, string owner, int amount)
-   {
-       var insuranceClaim = loadClaim(id);
-   	   insuranceClaim.Create(owner, amount);
-       return insuranceClaim;
-   }
-
+   [HttpGet]
    [Route("")]
-   public HttpResponseMessage GetResult()
+   public HttpResponseMessage Result()
    {
        var response = new HttpResponseMessage(HttpStatusCode.OK)
        {
