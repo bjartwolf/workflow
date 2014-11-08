@@ -25,17 +25,20 @@ public class MoneyBin {
 	public MoneyBin(int money) {
 		Money = money;
 	}
-	public int Money {get;set;}
+	
+	public void Withdraw(int amount) {
+		if (amount > Money) throw new Exception("Not enough money");
+		Money -= amount;
+	}
+	public int Money {get; private set;}
 }
-
 
 async void Main()
 {
 	string baseAddress = "http://localhost:8090/";
 	var cache = MemoryCache.Default;
 	cache.Add("cash", new MoneyBin(100000), DateTime.MaxValue);
-	var claim = new InsuranceClaim ("bjartnes", 10000);
-	
+
 	using (var app = WebApp.Start<Startup>(url: baseAddress))
 	{
 		"Workflow engine started".Dump();
@@ -86,16 +89,22 @@ public class InsuranceClaim {
 
 
 	public InsuranceClaim (string owner, int requestAmount) {
+		// States
 		var created = new State<string>("created", () => { });
 		var complained = new State<string>("complained", () => { });
 		var reviewed = new State<string>("reviewed", () => { });
-		var accepted = new State<string>("accepted", () => {MakePayment(); Machine.Accept("setcomplete");});
+		var accepted = new State<string>("accepted", () => {
+				MakePayment(); 
+		});
 		var completed = new State<string>("completed", () => { });
+		
+		// Transitions
 		created.To(reviewed).On("reviewed");
 		reviewed.To(accepted).On("accepted");
 		reviewed.To(complained).On("complained");
 		complained.To(reviewed).On("reviewed");
 		accepted.To(completed).On("setcomplete");
+		
 		InsuranceStates = new List<State<string>> {created, reviewed, complained, accepted, completed};
 		Machine = new Automaton<string>(InsuranceStates.First());
 		Owner = owner;
@@ -113,18 +122,18 @@ public class InsuranceClaim {
 	}
 	
 	private void MakePayment() {
-	   var moneyBin = (MoneyBin)MemoryCache.Default.Get("cash");
-	   moneyBin.Money = moneyBin.Money - ApprovedAmount;
-	   PayedAmount = ApprovedAmount;
+	   Machine.Accept("setcomplete");
 	   Draw();
-	   
+	   var moneyBin = (MoneyBin)MemoryCache.Default.Get("cash");
+	   moneyBin.Withdraw(ApprovedAmount);
+	   PayedAmount = ApprovedAmount;
 	}
 
 	public void Approve (int newAmount, string approver) {
-		Approver = approver;
-		ApprovedAmount = newAmount;
 		Machine.Accept("approved");
 	    Draw();
+		Approver = approver;
+		ApprovedAmount = newAmount;
 	}
 
 	public void MakeComplaint() {
@@ -133,21 +142,21 @@ public class InsuranceClaim {
 	}
 	
 	public void ProcessComplaint(int? newAmount, string approver, string password) {
+		Machine.Accept("reviewed");
+		Draw();
 		if (password != "admin") return;
 		if (newAmount.HasValue) {
 			ApprovedAmount = newAmount.Value;
 		}
 		Approver = approver;
-		Machine.Accept("reviewed");
-		Draw();
 	}
 	
 	public void Review(int amount, string approver, string password) {
+		Machine.Accept("reviewed");
+		Draw();
 		if (password != "admin") return;
 		ApprovedAmount = amount;
 		Approver = approver;
-		Machine.Accept("reviewed");
-		Draw();
 	}
 }
 
