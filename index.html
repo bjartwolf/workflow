@@ -26,6 +26,8 @@ app.controller('DocumentController', ['$http', function($http) {
   			wf.showComplainButton = true;
 			wf.showApproveButton = true;
   			wf.showRefreshButton = false;
+			wf.showProposedAmount = true;
+			wf.proposedAmount = data.ApprovedAmount;
 		}
 		});
   }
@@ -40,6 +42,8 @@ app.controller('DocumentController', ['$http', function($http) {
   };  
   wf.showCreateButton = true;
   wf.showRefreshButton = true;
+  wf.proposedAmount = 0;
+  wf.showProposedAmount = false;
   wf.showMoneyBack = false;
 }]);
 
@@ -56,7 +60,8 @@ app.controller('DocumentController', ['$http', function($http) {
 	<button ng-show="wf.showRefreshButton" ng-click="wf.refresh()">Refresh claim</button>
 	<button ng-show="wf.showComplainButton" ng-click="wf.complain()">Complain</button>
         <button ng-show="wf.showApproveButton" ng-click="wf.approve()">Approve</button>
-	<div ng-show="wf.showMoneyBack"> {{ wf.moneyBack }} </div>
+	<div ng-show="wf.showProposedAmount"> Proposed amount back: {{ wf.proposedAmount}} </div>
+	<div ng-show="wf.showMoneyBack"> Money recieved: {{ wf.moneyBack }} </div>
     </div>
 </body>
 

@@ -143,22 +143,16 @@ public class InsuranceClaim {
 		Machine.Accept("complained");
  	    Draw();
 	}
-	
-	public void ProcessComplaint(int? newAmount, string approver, string password) {
+
+	public void Review(int? amount, string approver, string password) {
 		if (password != "admin") return;
 		Machine.Accept("reviewed");
 		Draw();
-		if (newAmount.HasValue) {
-			ApprovedAmount = newAmount.Value;
+		if (amount.HasValue) {
+			ApprovedAmount = amount.Value;
+		} else {
+			ApprovedAmount = RequestAmount;
 		}
-		Approver = approver;
-	}
-	
-	public void Review(int amount, string approver, string password) {
-		if (password != "admin") return;
-		Machine.Accept("reviewed");
-		Draw();
-		ApprovedAmount = amount;
 		Approver = approver;
 	}
 }
@@ -170,8 +164,8 @@ public class InsuranceClaimController : ApiController
 	}
 
    [HttpGet]
-   [Route("review/{id}/{approver}/{amount}/{password}")]
-   public InsuranceClaim Review(int id, string approver, int amount, string password)
+   [Route("review/{id}/{approver}/{password}/{amount}")]
+   public InsuranceClaim Review(int id, string approver, string password, int? amount)
    {
   	   var insuranceClaim = loadClaim(id);
 	   insuranceClaim.Review(amount, approver, password);
@@ -185,15 +179,6 @@ public class InsuranceClaimController : ApiController
   	   var insuranceClaim = loadClaim(id);
 	   insuranceClaim.Accept();
 	   return insuranceClaim;
-   }
-
-   [HttpGet]
-   [Route("ProcessComplaint/{id}/{approver}/{password}/{newAmount}")]
-   public InsuranceClaim ProcessComplaint (int id, string approver, string password, int? newAmount)
-   {
-   	   var insuranceClaim = loadClaim(id);
-	   insuranceClaim.ProcessComplaint(newAmount,approver, password);
-       return insuranceClaim;
    }
 
    [HttpGet]
