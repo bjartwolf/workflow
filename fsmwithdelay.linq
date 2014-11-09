@@ -78,7 +78,7 @@ public class InsuranceClaim {
 			throw new Exception("This is not Erlang");
 		}
 	}
-	public Automaton<string> Machine {get; set;}
+	public DelayedAutomaton<string> Machine {get; set;}
 	public List<State<string>> InsuranceStates {get; set;}
 
 	public void Draw() {
@@ -105,12 +105,11 @@ public class InsuranceClaim {
 		   		moneyBin.Withdraw(ApprovedAmount);
 			    PayedAmount = ApprovedAmount;
 		});
-		
 		reviewed.To(complained).On("complained");
 		complained.To(reviewed).On("reviewed");
 		
 		InsuranceStates = new List<State<string>> {created, reviewed, complained, completed};
-		Machine = new Automaton<string>(InsuranceStates.First());
+		Machine = new DelayedAutomaton<string>(InsuranceStates.First());
 		Owner = owner;
 		RequestAmount = requestAmount;
 		// Add to cache
