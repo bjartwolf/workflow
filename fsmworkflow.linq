@@ -3,6 +3,7 @@
   <Reference>&lt;RuntimeDirectory&gt;\System.Net.Http.dll</Reference>
   <Reference>&lt;RuntimeDirectory&gt;\System.Runtime.Caching.dll</Reference>
   <Reference>&lt;RuntimeDirectory&gt;\System.Runtime.Serialization.dll</Reference>
+  <Reference>&lt;RuntimeDirectory&gt;\System.Security.dll</Reference>
   <NuGetReference>Microsoft.AspNet.WebApi.OwinSelfHost</NuGetReference>
   <Namespace>Automata</Namespace>
   <Namespace>Microsoft.Owin.Hosting</Namespace>
@@ -16,10 +17,19 @@
   <Namespace>System.Net.Http.Headers</Namespace>
   <Namespace>System.Runtime.Caching</Namespace>
   <Namespace>System.Runtime.Serialization</Namespace>
+  <Namespace>System.Security</Namespace>
   <Namespace>System.Text</Namespace>
   <Namespace>System.Threading.Tasks</Namespace>
   <Namespace>System.Web.Http</Namespace>
 </Query>
+
+public class Input {
+	public string Approver {get;set;}
+	public int ApprovedAmount {get;set;}
+	public int RequestAmount{get;set;}
+	public string Owner {get;set;}
+
+}
 
 public class MoneyBin {
 	public MoneyBin(int money) {
@@ -50,6 +60,7 @@ async void Main()
 // Strukturen er gitt av 
 [DataContract]
 public class InsuranceClaim {
+	public Input Input {get;set;}
 	[DataMember]
 	public readonly int Id;
 	public string Owner {get;set;}
@@ -92,22 +103,27 @@ public class InsuranceClaim {
 
 	public InsuranceClaim (string owner, int requestAmount) {
 		// States
-		var created = new State<string>("created", () => { });
-		var complained = new State<string>("complained", () => { });
-		var reviewed = new State<string>("reviewed", () => { });
-		var accepted = new State<string>("accepted", () => {
-				MakePayment(); 
-		});
-		var completed = new State<string>("completed", () => { });
+		var created = new State<string>("created");
+		var complained = new State<string>("complained");
+		var reviewed = new State<string>("reviewed");
+		var completed = new State<string>("completed");
 		
 		// Transitions
-		created.To(reviewed).On("reviewed");
-		reviewed.To(accepted).On("accepted");
+		created.To(reviewed).On("reviewed", () => {
+			ApprovedAmount = Input.ApprovedAmount;
+			Approver = Input.Approver;
+		});
+		
+		reviewed.To(completed).On("accepted", () => {
+				var moneyBin = (MoneyBin)MemoryCache.Default.Get("cash");	
+		   		moneyBin.Withdraw(ApprovedAmount);
+			    PayedAmount = ApprovedAmount;
+		});
+		
 		reviewed.To(complained).On("complained");
 		complained.To(reviewed).On("reviewed");
-		accepted.To(completed).On("setcomplete");
-		
-		InsuranceStates = new List<State<string>> {created, reviewed, complained, accepted, completed};
+		Input = new Input();
+		InsuranceStates = new List<State<string>> {created, reviewed, complained, completed};
 		Machine = new Automaton<string>(InsuranceStates.First());
 		Owner = owner;
 		RequestAmount = requestAmount;
@@ -123,36 +139,20 @@ public class InsuranceClaim {
 		Draw();
 	}
 	
-	private void MakePayment() {
-	   Machine.Accept("setcomplete");
-	   Draw();
-	   var moneyBin = (MoneyBin)MemoryCache.Default.Get("cash");
-	   moneyBin.Withdraw(ApprovedAmount);
-	   PayedAmount = ApprovedAmount;
-	}
-
-	public void Approve (int newAmount, string approver) {
-		Machine.Accept("approved");
-	    Draw();
-		Approver = approver;
-		ApprovedAmount = newAmount;
-	}
-
 	public void MakeComplaint() {
 		Machine.Accept("complained");
  	    Draw();
 	}
 
-	public void Review(int? amount, string approver, string password) {
-		if (password != "admin") return;
+	public void Review(int? amount, string approver) {
+		if (amount.HasValue) {
+			Input.ApprovedAmount = amount.Value;
+		} else {
+			Input.ApprovedAmount = RequestAmount;
+		}
+		Input.Approver = approver;
 		Machine.Accept("reviewed");
 		Draw();
-		if (amount.HasValue) {
-			ApprovedAmount = amount.Value;
-		} else {
-			ApprovedAmount = RequestAmount;
-		}
-		Approver = approver;
 	}
 }
 
@@ -166,8 +166,9 @@ public class InsuranceClaimController : ApiController
    [Route("review/{id}/{approver}/{password}/{amount}")]
    public InsuranceClaim Review(int id, string approver, string password, int? amount)
    {
-  	   var insuranceClaim = loadClaim(id);
-	   insuranceClaim.Review(amount, approver, password);
+	   if (password != "admin") throw new SecurityException("wrong password");
+	   var insuranceClaim = loadClaim(id);
+	   insuranceClaim.Review(amount, approver);
 	   return insuranceClaim;
    }
 
@@ -175,8 +176,9 @@ public class InsuranceClaimController : ApiController
    [Route("reviewcomplaint/{id}/{approver}/{password}/{amount}")]
    public InsuranceClaim ReviewComplaint(int id, string approver, string password, int? amount)
    {
+   	   if (password != "admin") throw new SecurityException("wrong password");
   	   var insuranceClaim = loadClaim(id);
-	   insuranceClaim.Review(amount, approver, password);
+	   insuranceClaim.Review(amount, approver);
 	   return insuranceClaim;
    }
 
