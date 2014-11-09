@@ -74,6 +74,7 @@ public class InsuranceClaim {
 	public void Accept() {
 		if (IsCompleted) return;
 		IsAccepted = true;
+		forApproval = false;
 		MakePayment();
 		SetPaymentComplete();
 	}
@@ -95,8 +96,9 @@ public class InsuranceClaim {
 	/// 23.91.29
 	/// </Last modified>
 	public void SetPaymentComplete() {
-		if (HasComplained) return;
+		if (HasComplained || forApproval.Value) return;
 		IsCompleted = true;
+		forApproval = false;
 	}
 	
 	private void MakePayment() {
@@ -118,7 +120,8 @@ public class InsuranceClaim {
 	}
 
 	public void MakeComplaint() {
-		HasComplained = true;	
+		HasComplained = true;
+		forApproval = false;
 	}
 	
 	public void SetAcceptedAmount(int amount, string approver, string password) {
