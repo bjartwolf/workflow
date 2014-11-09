@@ -23,14 +23,6 @@
   <Namespace>System.Web.Http</Namespace>
 </Query>
 
-public class Input {
-	public string Approver {get;set;}
-	public int ApprovedAmount {get;set;}
-	public int RequestAmount{get;set;}
-	public string Owner {get;set;}
-
-}
-
 public class MoneyBin {
 	public MoneyBin(int money) {
 		Money = money;
@@ -60,7 +52,6 @@ async void Main()
 // Strukturen er gitt av 
 [DataContract]
 public class InsuranceClaim {
-	public Input Input {get;set;}
 	[DataMember]
 	public readonly int Id;
 	public string Owner {get;set;}
@@ -109,10 +100,7 @@ public class InsuranceClaim {
 		var completed = new State<string>("completed");
 		
 		// Transitions
-		created.To(reviewed).On("reviewed", () => {
-			ApprovedAmount = Input.ApprovedAmount;
-			Approver = Input.Approver;
-		});
+		created.To(reviewed).On("reviewed");
 		
 		reviewed.To(completed).On("accepted", () => {
 				var moneyBin = (MoneyBin)MemoryCache.Default.Get("cash");	
@@ -122,7 +110,7 @@ public class InsuranceClaim {
 		
 		reviewed.To(complained).On("complained");
 		complained.To(reviewed).On("reviewed");
-		Input = new Input();
+		
 		InsuranceStates = new List<State<string>> {created, reviewed, complained, completed};
 		Machine = new Automaton<string>(InsuranceStates.First());
 		Owner = owner;
@@ -145,13 +133,14 @@ public class InsuranceClaim {
 	}
 
 	public void Review(int? amount, string approver) {
-		if (amount.HasValue) {
-			Input.ApprovedAmount = amount.Value;
-		} else {
-			Input.ApprovedAmount = RequestAmount;
-		}
-		Input.Approver = approver;
-		Machine.Accept("reviewed");
+		Machine.Accept("reviewed", () => {
+		    Approver = approver;
+			if (amount.HasValue) {
+				ApprovedAmount = amount.Value;
+			} else {
+				ApprovedAmount = RequestAmount;
+			}
+		});
 		Draw();
 	}
 }
